@@ -1,14 +1,12 @@
-import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.padding import PKCS7
 from cryptography.hazmat import backends
+import protocol
 
-
+"""
+Builds a Cipher object used by both encryption and decryption functions.
+"""
 def build_cipher(key: bytes, iv: bytes, alg: str, mode: str) -> Cipher:
-    """
-    Builds a Cipher object used by both encryption and decryption functions.
-    """
-
     # Dictionary that maps supported and enabled algorithms names to it's classes and key sizes.
     # The lib cryptography doesn't differentiate algorithms based on the key size,
     # it's just a matter of passing the desired key size to it.
@@ -23,31 +21,35 @@ def build_cipher(key: bytes, iv: bytes, alg: str, mode: str) -> Cipher:
 
     # Dictionary that maps supported and enabled modes names to it's classes.
     enabled_modes = {
-        'ECB': modes.ECB,
-        'CBC': modes.CBC,
+        'ECB': modes.ECB(),  # ECB mode is the only one which doesn't take any arguments
+        'CBC': modes.CBC(iv),
         # 'CFB1': None,
-        'CFB8': modes.CFB8,
+        'CFB8': modes.CFB8(iv),
         # 'CFB64': None,
         # 'CFB128': None,
-        'CTR': modes.CTR,
+        'CTR': modes.CTR(iv),
     }
 
     # Gets the algorithm and mode.
-    alg_obj = enabled_algorithms[alg]
-    mode_obj = enabled_modes[mode]
+    alg_select = enabled_algorithms[alg]
+    mode_select = enabled_modes[mode]
 
     # Check if the key size is the right one as cryptography lib doesn't differentiate it.
-    assert len(key) * 8 == alg_obj['key_size'], 'wrong key size'
+    try:
+        alg_obj = alg_select['class'](key)
+        assert alg_obj.key_size == alg_select['key_size']
+    except:
+        print('wrong key size')
+        raise protocol.ErrorCodes(protocol.ErrorCodes.NotSupportedParams)
 
     # Creates the Cipher object with a default cryptography backend.
-    return Cipher(alg_obj['class'](key), mode_obj(iv), backend=backends.default_backend())
+    return Cipher(alg_obj, mode_select, backend=backends.default_backend())
 
 
+"""
+Uses a Cipher object to encrypt a data.
+"""
 def encrypt(data: bytes, key: bytes, iv: bytes, alg: str, mode: str, pkcs5: bool) -> bytes:
-    """
-    Uses a Cipher object to encrypt a data.
-    """
-
     # Pad a data with PKCS5
     if pkcs5:
         data = padder_pkcs5(data)
@@ -58,38 +60,37 @@ def encrypt(data: bytes, key: bytes, iv: bytes, alg: str, mode: str, pkcs5: bool
     return encryptor.update(data) + encryptor.finalize()
 
 
+"""
+Uses a Cipher object to decrypt a data.
+"""
 def decrypt(data: bytes, key: bytes, iv: bytes, alg: str, mode: str, pkcs5: bool) -> bytes:
-    """
-    Uses a Cipher object to decrypt a data.
-    """
-
-    # Unpad a PKCS5 padded data.
-    if pkcs5:
-        data = unpadder_pkcs5(data)
-
     cipher = build_cipher(key, iv, alg, mode)
     decryptor = cipher.decryptor()
 
-    return decryptor.update(data) + decryptor.finalize()
+    ret = decryptor.update(data) + decryptor.finalize()
+
+    # Unpad a PKCS5 padded data.
+    if pkcs5:
+        ret = unpadder_pkcs5(ret)
+
+    return ret
 
 
+"""
+PKCS7 is a generalization of PKCS5, allowing a wide range of block sizes,
+then we can just use it with block size 128 bits.
+"""
 def padder_pkcs5(data: bytes) -> bytes:
-    """
-    PKCS7 is a generalization of PKCS5, allowing a wide range of block sizes,
-    then we can just use it with block size 128 bits.
-    """
-
     # Pads with PKCS7 using 128 bits block size.
     p = PKCS7(128).padder()
     return p.update(data) + p.finalize()
 
 
+"""
+PKCS7 is a generalization of PKCS5, allowing a wide range of block sizes,
+then we can just use it with block size 128 bits.
+"""
 def unpadder_pkcs5(data: bytes) -> bytes:
-    """
-    PKCS7 is a generalization of PKCS5, allowing a wide range of block sizes,
-    then we can just use it with block size 128 bits.
-    """
-
     # Unpads a PKCS7-padded data.
     p = PKCS7(128).unpadder()
     return p.update(data) + p.finalize()

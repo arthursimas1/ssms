@@ -18,7 +18,7 @@ import networking
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='python3 main.py',
+    parser = argparse.ArgumentParser(prog='./smss.exe',
                                      description='Send encrypted messages to someone.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -58,20 +58,25 @@ def main():
     args = parser.parse_args()
 
     address, port = args.addr.split(',')
-    #key = 1, args.key_type: str
-    # args.key
-    key = b'chave 1 de teste'
 
-    if args.server:
+    key = args.key.encode('utf8') if args.key_type == 'ascii' else bytes.fromhex(args.key)
+
+    if args.server:  # Server mode
         if args.source_id is not None:
             parser.error("--server doesn't need --source-id parameter.")
         if args.dest_id is not None:
             parser.error("--server doesn't need --dest-id parameter.")
 
         networking.open_server((address, int(port)), key)
-    else:
+    else:  # Client mode
         if args.source_id is None or args.dest_id is None:
             parser.error("--client requires --source-id and --dest-id.")
+
+        if not 0 <= args.source_id <= 65535:
+            parser.error("--source-id must be between 0 and 65535 (inclusive).")
+
+        if not 0 <= args.dest_id <= 65535:
+            parser.error("--dest-id must be between 0 and 65535 (inclusive).")
 
         networking.open_client((address, int(port)), args.source_id, args.dest_id, key, args.algorithm, args.pkcs5)
 

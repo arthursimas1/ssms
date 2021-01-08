@@ -1,9 +1,9 @@
-from typing import Tuple
+import typing
 import socket
 from sys import stdin
 import protocol
 
-Address = Tuple[str, int]
+Address = typing.Tuple[str, int]
 
 
 class Connection:
@@ -16,13 +16,13 @@ class Connection:
     def send(conn: socket.socket, msg: bytes) -> None:
         # Total sent bytes counter, used to determine
         # whether the message has been sent successfully or not
-        total_sent = 0
+        total_sent: int = 0
 
         # Keeps sending message bytes until there's none to send
         while total_sent < len(msg):
             # .send is a socket's function. Used to send data through a TCP based socket.
             # [init:] = it skips init bytes of the message
-            bytes_sent = conn.send(msg[total_sent:])
+            bytes_sent: int = conn.send(msg[total_sent:])
 
             # If 0 bytes was sent, then there's a problem
             if bytes_sent == 0:
@@ -32,7 +32,7 @@ class Connection:
     @staticmethod
     def receive(conn: socket.socket, msg_size: int) -> bytes:
         # Variable to store the message. It's initialized to an empty byte string.
-        msg = b''
+        msg: bytes = b''
 
         # Keeps receiving expected message bytes until there's none to receive
         while len(msg) < msg_size:
@@ -84,9 +84,9 @@ class Server:
     def receive(self) -> None:
         receive = protocol.Receive(self.conn, self.key)
         receive.process()
-        self.source_id = receive.source_id
-        self.dest_id = receive.dest_id
-        self._message = receive.message
+        self.source_id: int = receive.source_id
+        self.dest_id: int = receive.dest_id
+        self._message: bytes = receive.message
 
     """
     Message getter
@@ -144,11 +144,10 @@ class Client:
             self.conn.close()
 
 
+"""
+Primary function used to open the server and receive a message.
+"""
 def open_server(addr: Address, key: bytes) -> None:
-    """
-    Primary function used to open the server and receive a message.
-    """
-
     # Creates a server listening in addr, and with a shared key
     s = Server(addr, key)
 
@@ -178,7 +177,6 @@ def open_server(addr: Address, key: bytes) -> None:
         return
     except Exception as e:
         print(f'error: {e}')
-        return
 
     print('closing...')
     s.close()
@@ -186,11 +184,10 @@ def open_server(addr: Address, key: bytes) -> None:
     print('done.')
 
 
+"""
+Primary function used to connect the a server and send a message.
+"""
 def open_client(addr: Address, source_id: int, dest_id: int, key: bytes, algorithm: str, pkcs5: bool) -> None:
-    """
-    Primary function used to connect the a server and send a message.
-    """
-
     # Creates a client with a given source id, destination id, shared key,
     # cryptographic algorithm and pkcs5 padding option.
     # It will try to connect to a server in addr.
@@ -226,7 +223,6 @@ def open_client(addr: Address, source_id: int, dest_id: int, key: bytes, algorit
         c.send(terminal_input.encode('utf-8'))
     except Exception as e:
         print(f'some error occurred: {e}')
-        return
 
     print('closing...')
     c.close()
