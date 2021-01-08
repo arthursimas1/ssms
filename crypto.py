@@ -25,10 +25,10 @@ def build_cipher(key: bytes, iv: bytes, alg: str, mode: str) -> Cipher:
     enabled_modes = {
         'ECB': modes.ECB,
         'CBC': modes.CBC,
-        'CFB1': None,
+        # 'CFB1': None,
         'CFB8': modes.CFB8,
-        'CFB64': None,
-        'CFB128': None,
+        # 'CFB64': None,
+        # 'CFB128': None,
         'CTR': modes.CTR,
     }
 
